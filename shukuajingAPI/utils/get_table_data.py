@@ -152,6 +152,7 @@ def download_table_excel(
     :param retry_interval: 重试间隔秒数
     :return: 文件绝对路径（成功时）/ None（失败时）
     """
+
     # 获取表元数据
     table_meta = get_tableNameIDDIct_by_name(table_name, project_name, token_str, api_url)
     if not table_meta:
@@ -161,6 +162,11 @@ def download_table_excel(
 
     # 生成规范文件名
     file_name = f"{table_meta[0]}_{datetime.now().strftime('%Y%m%d')}.xlsx"
+    # 判断文件是否存在于该目录下面，存在则不下载，不存在则下载
+    if check_excel_file_exists(file_name, save_path):
+        logger.info(f"[INFO] 文件 {file_name} 已存在，跳过下载")
+        return file_name
+
     save_path = save_path or os.getcwd()
     full_path = os.path.abspath(os.path.join(save_path, file_name))
 
@@ -197,7 +203,7 @@ def download_table_excel(
 
             # print(f"[SUCCESS] 文件已保存至：{full_path}")
             logger.info(f"[SUCCESS] 文件已保存至：{full_path}")
-            return full_path
+            return file_name
 
         except requests.exceptions.RequestException as e:
             # print(f"[ERROR] 请求失败：{str(e)}")
@@ -214,6 +220,49 @@ def download_table_excel(
 
     return None
 
+def delete_excel_files_three_days_ago(directory_path):
+    """
+    遍历指定路径下的所有Excel文件，并删除修改时间为三天前的文件。
+
+    :param directory_path: 要遍历的目录路径
+    """
+    # 获取当前时间戳
+    current_time = time.time()
+    # 计算三天前的时间戳
+    three_days_ago = current_time - 3 * 24 * 60 * 60
+
+    # 遍历目录下的所有文件和子目录
+    for root, dirs, files in os.walk(directory_path):
+        for file in files:
+            # 检查文件是否为Excel文件（扩展名）
+            if file.endswith(".xls") or file.endswith(".xlsx"):
+                file_path = os.path.join(root, file)
+                # 获取文件的最后修改时间
+                file_mtime = os.path.getmtime(file_path)
+
+                # 如果文件的修改时间早于三天前，则删除该文件
+                if file_mtime < three_days_ago:
+                    os.remove(file_path)
+
+
+def check_excel_file_exists(file_name, directory_path):
+    """
+    判断指定路径下是否存在特定名称的Excel文件。
+
+    :param file_name: 要查找的Excel文件名（包括扩展名，如.xlsx或.xls）
+    :param directory_path: 要搜索的目录路径
+    :return: 如果存在返回 True，否则返回 False
+    """
+    # 构造完整文件路径
+    target_path = os.path.join(directory_path, file_name)
+
+    # 判断该路径是否存在且是一个文件
+    return os.path.isfile(target_path)
+
+
+
+
+
 if __name__ == '__main__':
     token_str = get_api_keys_by_token()
     # # 获取所有项目
@@ -222,7 +271,7 @@ if __name__ == '__main__':
     # print(get_table_names('数据库资料',token_str, api_url))
     # # 获取表数据
     # print(get_table_data('库存数据','数据整理',token_str, api_url))
-    print(download_table_excel('库存数据','数据整理',token_str, api_url,'E:\YYZ',10,30))
+    # print(download_table_excel('库存数据','数据整理',token_str, api_url,'E:\YYZ',10,30))
     print(download_table_excel('FBA库存状况报告','数据整理',token_str, api_url,'E:\YYZ',10,30))
     # print(download_table_excel('销售数量','销售管理',token_str, api_url,'E:\YYZ',10,30))
     # print(download_table_excel('销售管理-销售数量','数据库资料',token_str, api_url,'E:\YYZ',10,30))
