@@ -91,7 +91,11 @@ class DataInsert:
         conn.close()
         print("所有Excel文件导入完成！")
     def insert_data_from_excel(self, data_path:  str):
+        """
 
+        :param data_path:
+        :return:
+        """
         # 删除三天前的文件
         delete_excel_files_three_days_ago(data_path)
         #  下载数据
