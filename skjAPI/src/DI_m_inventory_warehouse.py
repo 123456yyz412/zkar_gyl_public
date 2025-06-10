@@ -19,10 +19,8 @@ class DI_m_sales_quantity(DataInsert):
         """
         try:
             # 1. ***处理指定列
-            row.iloc[6] = str(row.iloc[6]).replace(',', '').replace('，', '')
-            row.iloc[7] = str(row.iloc[7]).replace(',', '').replace('，', '')
-            row.iloc[8] = str(row.iloc[8]).replace(',', '').replace('，', '')
-            row.iloc[9] = str(row.iloc[9]).replace(',', '').replace('，', '')
+            row.iloc[2] = str(row.iloc[2]).replace(',', '').replace('，', '')
+            row.iloc[3] = str(row.iloc[3]).replace(',', '').replace('，', '')
 
 
             # 2. 通用处理逻辑示例
@@ -40,6 +38,6 @@ class DI_m_sales_quantity(DataInsert):
         return row
 
 if __name__ == '__main__':
-    di = DI_m_sales_quantity('m_inventory_warehouse','销售数量','销售管理')
+    di = DI_m_sales_quantity('m_inventory_warehouse','库存数据','数据整理')
     di.truncate_table()
     di.insert_data_from_excel('E:\YYZ')
