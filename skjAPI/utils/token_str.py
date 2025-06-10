@@ -3,7 +3,7 @@
 """
 import redis
 import requests
-from shukuajingAPI.shukuajing_config.skj_config import api_url,accessKeyId,accessKeySecret,headers,service_ipv4,service_port_redis
+from skjAPI.shukuajing_config.skj_config import api_url,accessKeyId,accessKeySecret,headers,service_ipv4,service_port_redis
 
 
 def get_api_keys_by_token():

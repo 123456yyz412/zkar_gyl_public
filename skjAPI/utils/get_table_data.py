@@ -2,9 +2,9 @@ import time
 import os
 from datetime import datetime
 import requests
-from shukuajingAPI.shukuajing_config.skj_config import api_url
-from shukuajingAPI.utils.token_str import get_api_keys_by_token
-from shukuajingAPI.utils.log_util import logger
+from skjAPI.shukuajing_config.skj_config import api_url
+from skjAPI.utils.token_str import get_api_keys_by_token
+from skjAPI.utils.log_util import logger
 
 
 def get_all_projects(token_str:str,api_url):
@@ -80,6 +80,68 @@ def get_tableNameIDDIct_by_name(table_name:str,project_name:str,token_str:str, a
         if table_name in dict.get('name'):
             return [dict['name'],dict['id']]
     return None
+
+# 下面两个函数是老接口
+def get_table_data_v1(table_name:str,project_name:str,token_str:str, api_url,pageIndex=1,table_body=None):
+    """
+    通过API的POST请求获取表数据
+    :param table_name: 表的名字，唯一近似名字
+    :param token_str: 临时令牌（十秒钟只允许获取一次 token，且 token 将于一小时内有效，请妥善保存，失效后请重新获取）get_api_keys_by_token获取
+    :param api_url: API的URL地址
+    :param pageIndex: 页码，默认为1
+    :param table_body: 请求体，默认为None
+    :return: 表的数据
+    """
+    tableNameID_list = get_tableNameIDDIct_by_name(table_name,project_name,token_str, api_url)
+    tableId = str(tableNameID_list[1])
+    tableName = str(tableNameID_list[0])
+    api_str = f"/decision/api/v1/tables/{tableId}/fields/page"
+    if table_body is not None:
+        body = table_body
+    else:
+        body = {
+            "tableName": tableName,
+            "pageIndex": pageIndex
+        }
+    try:
+        response = requests.post(api_url + api_str, headers={'Authorization':token_str}, json=body)
+        response.raise_for_status()
+        data = response.json()
+        #print(tableName+"字段名:"+str(data.get('data','').get('fields','')))
+        #print('*****:'+str(data))
+        return data.get('data','')
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching API table datas: {e}")
+        return None
+
+def get_table_data_details(table_name:str,project_name:str,token_str:str, api_url, pageIndex=1,table_body=None):
+    """
+    通过API的POST请求获取表数据
+    :param table_name: 表的名字，唯一近似名字
+    :param token_str: 临时令牌（十秒钟只允许获取一次 token，且 token 将于一小时内有效，请妥善保存，失效后请重新获取）get_api_keys_by_token获取
+    :param api_url: API的URL地址
+    :param pageIndex: 页码，默认为1
+    :param table_body: 请求体，默认为None
+    :return: ["fields":表的字段，"data":表的数据,"dataNum":表的数据条数]
+    """
+    # 返回表的dict
+    dic_tableName_tableData_dataNum = {}
+    table_data_dic = get_table_data_v1(table_name,project_name,token_str, api_url, pageIndex, table_body)
+    table_files_list = [ file_dic["name"] for file_dic in table_data_dic.get('fields', '') ]
+
+    dic_tableName_tableData_dataNum['fields'] = table_files_list
+    dic_tableName_tableData_dataNum['data'] = table_data_dic.get('data', '')
+    dic_tableName_tableData_dataNum['dataNum'] = len(table_data_dic.get('data', ''))
+    dic_tableName_tableData_dataNum['pageInfo'] = table_data_dic.get('pageInfo', '')
+
+    return dic_tableName_tableData_dataNum
+
+
+# 上面两个函数是老接口的
+
+
+
+###########新街口############
 
 def get_table_data(table_name:str,project_name:str,token_str:str, api_url):
     """
@@ -162,13 +224,14 @@ def download_table_excel(
 
     # 生成规范文件名
     file_name = f"{table_meta[0]}_{datetime.now().strftime('%Y%m%d')}.xlsx"
+    save_path = save_path or os.getcwd()
+    full_path = os.path.abspath(os.path.join(save_path, file_name))
     # 判断文件是否存在于该目录下面，存在则不下载，不存在则下载
     if check_excel_file_exists(file_name, save_path):
         logger.info(f"[INFO] 文件 {file_name} 已存在，跳过下载")
-        return file_name
+        return full_path
 
-    save_path = save_path or os.getcwd()
-    full_path = os.path.abspath(os.path.join(save_path, file_name))
+
 
     # 创建保存目录
     os.makedirs(os.path.dirname(full_path), exist_ok=True)
@@ -203,7 +266,7 @@ def download_table_excel(
 
             # print(f"[SUCCESS] 文件已保存至：{full_path}")
             logger.info(f"[SUCCESS] 文件已保存至：{full_path}")
-            return file_name
+            return full_path
 
         except requests.exceptions.RequestException as e:
             # print(f"[ERROR] 请求失败：{str(e)}")

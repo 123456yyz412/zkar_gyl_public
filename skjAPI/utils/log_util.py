@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 from datetime import datetime
 from typing import Optional
-from shukuajingAPI.shukuajing_config.skj_config import log_win_path,log_linux_path
+from skjAPI.shukuajing_config.skj_config import log_win_path,log_linux_path
 
 class SKJLogger:
     def __init__(
