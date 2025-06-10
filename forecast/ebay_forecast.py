@@ -10,7 +10,7 @@ from sklearn.preprocessing import MinMaxScaler
 from sqlalchemy import create_engine
 
 # 数据连接配置
-engine = create_engine('mysql+pymysql://root:123456@localhost/tt_data')
+engine = create_engine('mysql+pymysql://u123:u123@localhost/test')
 
 def main_pipeline():
     # 1. 加载并预处理数据

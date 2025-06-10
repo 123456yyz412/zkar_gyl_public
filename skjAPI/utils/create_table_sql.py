@@ -78,5 +78,6 @@ def create_table_sql_from_excel(table_name, url):
 if __name__ == '__main__':
     token_str = get_api_keys_by_token()
     # print(token_str)
-    print(Create_table_sql("销售数量", "销售管理", token_str, api_url))
+    # print(Create_table_sql("销售数量", "销售管理", token_str, api_url))
     # print(create_table_sql_from_excel("inventory_warehouse", "E:\YYZ\库存数据_20250609.xlsx"))
+    print(create_table_sql_from_excel("m_sales_quantity", r"E:\YYZ\2、销售数量_20250610.xlsx"))
