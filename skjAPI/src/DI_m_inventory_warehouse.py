@@ -6,7 +6,7 @@ import pandas as pd
 from skjAPI.utils.DataInsert import DataInsert, logger
 
 
-class DI_m_sales_quantity(DataInsert):
+class DI_m_inventory_warehouse(DataInsert):
     def __init__(self, english_table_name, table_name, project_name):
         super().__init__( english_table_name, table_name, project_name)
 
@@ -38,6 +38,6 @@ class DI_m_sales_quantity(DataInsert):
         return row
 
 if __name__ == '__main__':
-    di = DI_m_sales_quantity('m_inventory_warehouse','库存数据','数据整理')
+    di = DI_m_inventory_warehouse('m_inventory_warehouse','库存数据','数据整理')
     di.truncate_table()
     di.insert_data_from_excel('E:\YYZ')
