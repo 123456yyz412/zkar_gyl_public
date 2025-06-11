@@ -1,4 +1,6 @@
 """只针对库存数据修改销售数据，不加库存特征工程；同时加上时间特征工程"""
+import datetime
+
 import pandas as pd
 import numpy as np
 import torch
@@ -7,11 +9,15 @@ import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
 from statsmodels.tsa.holtwinters import ExponentialSmoothing
 from sklearn.preprocessing import MinMaxScaler
-from sqlalchemy import create_engine
+from contextlib import contextmanager
+from sqlalchemy import create_engine, text
+from sqlalchemy.orm import scoped_session, sessionmaker
 
 # 数据连接配置
-engine = create_engine('mysql+pymysql://root:123456@192.168.3.5/tt_data')
-
+engine = create_engine('mysql+pymysql://u123:u123@127.0.0.1/model')
+result_engine = create_engine('mysql+pymysql://u123:u123@127.0.0.1/dw')
+start_date = '2020-01-01'
+end_date = '2025-05-31'
 def main_pipeline():
     # 1. 加载并预处理数据
     raw_df = load_and_preprocess(engine)
@@ -130,7 +136,7 @@ def load_and_preprocess(engine):
 
     # 库存：缺失值填充为NaN（保留缺失状态）
     # 但添加一个标记列，记录库存是否缺失
-    filled_df['inventory_missing'] = filled_df['inventory_missing'].fillna(True)
+    filled_df['inventory_missing'] = filled_df['inventory_missing'].fillna(True).infer_objects().astype(bool)
 
     return filled_df
 
@@ -538,17 +544,100 @@ def transform_to_wide_format(predictions_df):
 
     return wide_df[['sku', 'model_type'] + month_columns]
 
+
+# 创建全局引擎（单例模式）- 兼容2.0语法
+_engine = create_engine(
+    f"mysql+mysqlconnector://u123:u123@127.0.0.1:3306/dw",
+    pool_size=5,
+    max_overflow=10,
+    pool_recycle=3600,
+    future=True  # 关键参数：启用2.0兼容模式
+)
+
+# 创建线程安全的session工厂（需同步修改）
+_session_factory = scoped_session(
+    sessionmaker(bind=_engine, future=True)  # 添加future参数
+)
+
+
+@contextmanager
+def get_mysql_session():
+    """上下文管理器自动处理会话生命周期"""
+    session = _session_factory()
+    try:
+        yield session
+        session.commit()
+    except Exception as e:
+        session.rollback()
+        raise e
+    finally:
+        session.close()
+
+def write_predict_to_msyql(data_dic: dict, insert_talble: str):
+    """
+    插入数据到数据库销售目标表里面
+    :param data_dic:
+    :return:
+    """
+    try:
+        isnert_data_dic = {'sku': None, 'platform': None, 'predict_date': None, 'predicted_qty': None,
+                           'model_type': None}
+        for key, value in data_dic.items():
+            isnert_data_dic[key] = value
+        with get_mysql_session() as session:
+            stmt = text(f"""insert into {insert_talble}
+            (sku,platform,predict_date,predicted_qty,model_type)
+            values (
+            :_sku,:_platform,:_predict_date,:_predicted_qty,:_model_type
+            )
+            """)
+            session.execute(stmt, {'_sku':  isnert_data_dic['sku'], '_platform': isnert_data_dic['platform'],
+                                   '_predict_date':  isnert_data_dic['predict_date'], '_predicted_qty': isnert_data_dic['predicted_qty'],
+                                   '_model_type':  isnert_data_dic['model_type']})
+    except Exception as e:
+        print(f"Error: {e}")
+def insert_to_mysql():
+    try:
+        predictions = main_pipeline()
+        for index,row  in predictions.iterrows():
+            write_dic = {'sku': row['sku'], 'platform': row['platform'], 'predict_date': row['date'].strftime('%Y-%m-%d'),
+                          'predicted_qty': row['predicted_sales'], 'model_type': row['model_type']}
+            print(write_dic)
+            write_predict_to_msyql(write_dic, 'dw_ebay_sales_forecast')
+
+
+    except Exception as e:
+        # 错误处理与备份
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        backup_file = f'failed_forecast_backup_{timestamp}.csv'
+
+        print(f"❌ 数据库写入失败: {str(e)}，已保存备份到 {backup_file}")
+        predictions.to_csv(backup_file, index=False)
+
+
+
 # 执行预测
 if __name__ == "__main__":
-    predictions = main_pipeline()
+    # predictions = main_pipeline()
 
-    #转为宽表形式，方便查阅
-    wide_predictions = transform_to_wide_format(predictions)
-    wide_predictions = wide_predictions.iloc[:, :-1]    #剔除最后一列预测值周期不完整的数据
+    # #转为宽表形式，方便查阅
+    # wide_predictions = transform_to_wide_format(predictions)
+    # wide_predictions = wide_predictions.iloc[:, :-1]    #剔除最后一列预测值周期不完整的数据
+    #
+    # # 添加 predicted 后缀
+    # time_columns = [col for col in wide_predictions.columns if col not in ['sku', 'model_type']]
+    # wide_predictions.rename(columns={col: f"{col}_predicted" for col in time_columns}, inplace=True)
+    #
+    # #保存预测结果
+    # wide_predictions.to_excel('ebay_forecast_6_months.xlsx', index=False)
 
-    # 添加 predicted 后缀
-    time_columns = [col for col in wide_predictions.columns if col not in ['sku', 'model_type']]
-    wide_predictions.rename(columns={col: f"{col}_predicted" for col in time_columns}, inplace=True)
+    # 新增数据库写入逻辑
 
-    #保存预测结果
-    wide_predictions.to_excel('ebay_forecast_6_months.xlsx', index=False)
+    # predictions = main_pipeline()
+    # print(predictions)
+    # for index, row in predictions.iterrows():
+    #     sku = row['sku']
+    #     date = row['date']
+    #     predicted_sales = row['predicted_sales']
+    #     print('sku:',sku,'date:',date,'predicted_sales:',predicted_sales)
+    insert_to_mysql()
