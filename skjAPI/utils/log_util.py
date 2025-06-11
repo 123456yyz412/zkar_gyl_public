@@ -20,7 +20,7 @@ class SKJLogger:
         self.log_dir.mkdir(parents=True, exist_ok=True)
 
         # 设置文件名格式
-        log_file = self.log_dir / f"{name}/{datetime.now().strftime('%Y%m%d')}.log"
+        log_file = self.log_dir / f"{name}-{datetime.now().strftime('%Y%m%d')}.log"
 
         # 通用格式
         formatter = logging.Formatter(
