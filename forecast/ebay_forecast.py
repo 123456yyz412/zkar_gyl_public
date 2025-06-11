@@ -10,7 +10,7 @@ from sklearn.preprocessing import MinMaxScaler
 from sqlalchemy import create_engine
 
 # 数据连接配置
-engine = create_engine('mysql+pymysql://root:123456@localhost/tt_data')
+engine = create_engine('mysql+pymysql://u123:u123@localhost/test')
 
 def main_pipeline():
     # 1. 加载并预处理数据
@@ -91,17 +91,17 @@ def load_and_preprocess(engine):
        2、读取库存数据，列名分别为 sku, date, total_available_quantity, 分别代表sku名称，库存日期，库存量（查询前对数据进行'x'转'X'变化、去重or聚合操作）,如果是ebay平台就用大仓库存数据，amazon平台就用全部库存数据"""
     query = """
         SELECT
-            s.sku,
-            s.sales_date,
-            SUM(s.sales_qty) AS total_sales_qty,
-            MAX(i.total_available_quantity) AS total_available_quantity
+            s.ku_cunsku as sku,
+            s.xiao_shou_shi_jian as sales_date,
+            SUM(s.xiao_shou_shu_liang) AS total_sales_qty,
+            MAX(i.di_san_fang_cang_ku_zai_ku_shu_liang) AS total_available_quantity
         FROM m_sales_quantity s
-        LEFT JOIN inventory_warehouse i
-            ON CONVERT(s.sku USING utf8mb4) COLLATE utf8mb4_0900_ai_ci = i.sku
-            AND s.sales_date = i.date
-        WHERE s.platform = 'Ebay'
-            AND s.sales_date BETWEEN '2020-01-01' AND '2025-05-31'
-        GROUP BY s.sku, s.sales_date;
+        LEFT JOIN m_inventory_warehouse i
+            ON s.ku_cunsku = i.ku_cunsku
+            AND s.xiao_shou_shi_jian = i.ku_cun_ri_qi
+        WHERE s.ping_tai = 'Ebay'
+            AND s.xiao_shou_shi_jian BETWEEN '2020-01-01' AND '2025-05-31'
+        GROUP BY s.ku_cunsku, s.xiao_shou_shi_jian;
     """
     raw_df = pd.read_sql(query, engine)
 
@@ -137,7 +137,7 @@ def get_valid_window(series):
     """获取有效数据窗口：从第一个销售日到固定结束日"""
     non_zero = series['total_sales_qty'].gt(0)
     if non_zero.sum() == 0:
-        return pd.Series([]), pd.Series([])  # 返回空数据
+        return pd.Series([])#, pd.Series([])  # 返回空数据
 
     first_valid = series[non_zero].index.min()
     # 固定结束日期为2025-05-31
