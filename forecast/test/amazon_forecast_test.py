@@ -15,19 +15,17 @@ from sqlalchemy.orm import scoped_session, sessionmaker
 
 # 数据连接配置
 engine = create_engine('mysql+pymysql://u123:u123@127.0.0.1/model')
-result_engine = create_engine('mysql+pymysql://u123:u123@127.0.0.1/dw')
-start_date = '2020-01-01'
-end_date = '2025-05-31'
+
 def main_pipeline():
     # 1. 加载并预处理数据
     raw_df = load_and_preprocess(engine)
 
-    # 2. 仅处理Ebay平台数据
-    Ebay_skus = raw_df.index.get_level_values('sku').unique()
+    # 2. 仅处理amazon平台数据
+    amazon_skus = raw_df.index.get_level_values('sku').unique()
     all_predictions = []
 
     # 加载数据并处理
-    for sku in Ebay_skus:
+    for sku in amazon_skus:
         sku_data = raw_df.xs(sku, level='sku')
 
         # 应用有效窗口截取
@@ -58,7 +56,7 @@ def main_pipeline():
 
         # 构建结果DataFrame（新增model_type列）
         all_predictions.append(pd.DataFrame({
-            'platform': 'Ebay',
+            'platform': 'amazon',
             'sku': sku,
             'date': processed_pred.index,
             'predicted_sales': processed_pred.values,
@@ -102,10 +100,10 @@ def load_and_preprocess(engine):
             SUM(s.sales_qty) AS total_sales_qty,
             MAX(i.total_available_quantity) AS total_available_quantity
         FROM m_sales_quantity s
-        LEFT JOIN inventory_warehouse i
+        LEFT JOIN inventory_all i
             ON CONVERT(s.sku USING utf8mb4) COLLATE utf8mb4_0900_ai_ci = i.sku
             AND s.sales_date = i.date
-        WHERE s.platform = 'Ebay'
+        WHERE s.platform = 'amazon'
             AND s.sales_date BETWEEN '2020-01-01' AND '2025-05-31'
         GROUP BY s.sku, s.sales_date;
     """
@@ -602,7 +600,7 @@ def insert_to_mysql():
             write_dic = {'sku': row['sku'], 'platform': row['platform'], 'predict_date': row['date'].strftime('%Y-%m-%d'),
                           'predicted_qty': row['predicted_sales'], 'model_type': row['model_type']}
             print(write_dic)
-            write_predict_to_msyql(write_dic, 'dw_ebay_sales_forecast')
+            write_predict_to_msyql(write_dic, 'dw_amazon_sales_forecast')
 
 
     except Exception as e:
