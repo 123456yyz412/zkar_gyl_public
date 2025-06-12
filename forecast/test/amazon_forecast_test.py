@@ -608,7 +608,7 @@ def insert_to_mysql():
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         backup_file = f'failed_forecast_backup_{timestamp}.csv'
 
-        print(f"❌ 数据库写入失败: {str(e)}，已保存备份到 {backup_file}")
+        print(f"数据库写入失败: {str(e)}，已保存备份到 {backup_file}")
         predictions.to_csv(backup_file, index=False)
 
 
