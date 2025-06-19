@@ -335,7 +335,7 @@ if __name__ == '__main__':
     # # 获取表数据
     # print(get_table_data('库存数据','数据整理',token_str, api_url))
     # print(download_table_excel('库存数据','数据整理',token_str, api_url,'E:\YYZ',10,30))
-    print(download_table_excel('FBA库存状况报告','数据整理',token_str, api_url,'E:\YYZ',10,30))
+    print(download_table_excel('Ebay6个月的预测值_20250619140057','数据库资料',token_str, api_url,'E:\YYZ',10,30))
     # print(download_table_excel('销售数量','销售管理',token_str, api_url,'E:\YYZ',10,30))
     # print(download_table_excel('销售管理-销售数量','数据库资料',token_str, api_url,'E:\YYZ',10,30))
     # print(download_table_excel('一级订单SKU','数据库资料',token_str, api_url,'E:\YYZ',10,30))
