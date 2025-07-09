@@ -639,6 +639,5 @@ def insert_to_mysql():
 # 执行预测
 if __name__ == "__main__":
 
-    # insert_to_mysql()
-    end_time = get_last_month_end_date()
-    print(end_time,type(end_time))
+    insert_to_mysql()
+

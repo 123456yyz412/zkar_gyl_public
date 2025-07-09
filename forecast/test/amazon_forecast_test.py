@@ -640,6 +640,4 @@ def insert_to_mysql():
 if __name__ == "__main__":
 
     insert_to_mysql()
-    # delete_table('dw_amazon_sales_forecast')
-    # end_time = get_last_month_end_date()
-    # print(end_time,type(end_time))
+
