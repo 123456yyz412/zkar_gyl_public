@@ -10,7 +10,7 @@ from sklearn.preprocessing import MinMaxScaler
 from sqlalchemy import create_engine
 
 # 数据连接配置
-engine = create_engine('mysql+pymysql://root:123456@192.168.3.5/tt_data')
+engine = create_engine('mysql+pymysql://tyy:tyy0515@8.129.20.246/forecast')
 
 def main_pipeline():
     # 1. 加载并预处理数据
@@ -95,20 +95,19 @@ def load_and_preprocess(engine):
             s.sales_date,
             SUM(s.sales_qty) AS total_sales_qty,
             MAX(i.total_available_quantity) AS total_available_quantity
-        FROM m_sales_quantity s
-        LEFT JOIN inventory_warehouse i
+        FROM sales_daily_quantity s
+        LEFT JOIN ebay_inventory i
             ON CONVERT(s.sku USING utf8mb4) COLLATE utf8mb4_0900_ai_ci = i.sku
             AND s.sales_date = i.date
         WHERE s.platform = 'Ebay'
-            AND s.sku = '512518'
-            AND s.sales_date BETWEEN '2020-01-01' AND '2025-05-31'
+            AND s.sales_date BETWEEN '2020-01-01' AND '2025-06-30'
         GROUP BY s.sku, s.sales_date;
     """
     raw_df = pd.read_sql(query, engine)
 
 
     # 创建完整日期索引并填充
-    date_range = pd.date_range(start="2020-01-01", end="2025-05-31")
+    date_range = pd.date_range(start="2020-01-01", end="2025-06-30")
     sku_list = raw_df['sku'].unique()
 
     full_index = pd.MultiIndex.from_product(
@@ -138,21 +137,15 @@ def get_valid_window(series):
     """获取有效数据窗口：从第一个销售日到固定结束日"""
     non_zero = series['total_sales_qty'].gt(0)
     if non_zero.sum() == 0:
-        return pd.Series([])#, pd.Series([])  # 返回空数据
+        return pd.Series([]), pd.Series([])  # 返回空数据
 
     first_valid = series[non_zero].index.min()
-    # 固定结束日期为2025-05-31
-    end_date = pd.Timestamp('2025-05-31')
+    # 固定结束日期为2025-06-30
+    end_date = pd.Timestamp('2025-06-30')
     return series.loc[first_valid:end_date]
 
 def adjust_sales_with_inventory(sku_data, window=14, drop_threshold=0.5): #原数据，窗口大小，销量波动率阈值
-    """
-    库存修正销量逻辑-考虑库存缺失的情况
-    :param sku_data:
-    :param window:
-    :param drop_threshold:
-    :return:
-    """
+    """库存修正销量逻辑-考虑库存缺失的情况"""
     series = sku_data['total_sales_qty'].copy()
     inventory = sku_data['total_available_quantity']
     inventory_missing = sku_data['inventory_missing']
@@ -542,13 +535,24 @@ def transform_to_wide_format(predictions_df):
 if __name__ == "__main__":
     predictions = main_pipeline()
 
-    #转为宽表形式，方便查阅
+    # #转为宽表形式，方便查阅
     wide_predictions = transform_to_wide_format(predictions)
     wide_predictions = wide_predictions.iloc[:, :-1]    #剔除最后一列预测值周期不完整的数据
 
-    # 添加 predicted 后缀
-    time_columns = [col for col in wide_predictions.columns if col not in ['sku', 'model_type']]
-    wide_predictions.rename(columns={col: f"{col}_predicted" for col in time_columns}, inplace=True)
+    # # 添加 predicted 后缀
+    # time_columns = [col for col in wide_predictions.columns if col not in ['sku', 'model_type']]
+    # wide_predictions.rename(columns={col: f"{col}_predicted" for col in time_columns}, inplace=True)
+
+    # 保存为长表数据
+    id_vars = ['sku', 'model_type']
+    value_vars = [col for col in wide_predictions.columns if col not in id_vars]
+
+    # 转换成长表
+    df_long = pd.melt(wide_predictions, id_vars=id_vars, value_vars=value_vars,
+                      var_name='variable', value_name='value')
 
     #保存预测结果
-    wide_predictions.to_excel('ebay_forecast_6_months.xlsx', index=False)
+    #df_long.to_excel('ebay_forecast_6_months.xlsx', index=False)
+
+    # 保存预测结果到数据库
+    df_long.to_sql("Ebay_forecast_6_months", con=engine, if_exists='replace', index=False)
