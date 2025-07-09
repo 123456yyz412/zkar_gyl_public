@@ -1,6 +1,5 @@
 """只针对库存数据修改销售数据，不加库存特征工程；同时加上时间特征工程"""
 import datetime
-
 import pandas as pd
 import numpy as np
 import torch
@@ -13,11 +12,20 @@ from contextlib import contextmanager
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import scoped_session, sessionmaker
 
+def get_last_month_end_date() -> str:
+    try:
+        today = datetime.datetime.today()
+        first_day_of_month = today.replace(day=1)
+        last_day_of_prev_month = first_day_of_month - datetime.timedelta(days=1)
+        return last_day_of_prev_month.strftime('%Y-%m-%d')
+    except Exception as e:
+        raise ValueError("无法获取上月月末日期，请检查系统时间设置") from e
 # 数据连接配置
-engine = create_engine('mysql+pymysql://u123:u123@127.0.0.1/model')
+engine = create_engine('mysql+pymysql://u123:u123@127.0.0.1/forecast')
 result_engine = create_engine('mysql+pymysql://u123:u123@127.0.0.1/dw')
-start_date = '2020-01-01'
-end_date = '2025-05-31'
+start_time = '2020-01-01'
+end_time = get_last_month_end_date()
+
 def main_pipeline():
     # 1. 加载并预处理数据
     raw_df = load_and_preprocess(engine)
@@ -95,25 +103,25 @@ def load_and_preprocess(engine):
     # 查询语句（包含库存数据）
     """1、读取销售数据，列名分别为 platform, sku, sales_date, sales_qty, 分别代表平台、sku名称、销售时间，销量（查询前对数据进行'x'转'X'变化、去重or聚合操作）。
        2、读取库存数据，列名分别为 sku, date, total_available_quantity, 分别代表sku名称，库存日期，库存量（查询前对数据进行'x'转'X'变化、去重or聚合操作）,如果是ebay平台就用大仓库存数据，amazon平台就用全部库存数据"""
-    query = """
+    query = f"""
         SELECT
             s.sku,
             s.sales_date,
             SUM(s.sales_qty) AS total_sales_qty,
             MAX(i.total_available_quantity) AS total_available_quantity
-        FROM m_sales_quantity s
-        LEFT JOIN inventory_warehouse i
+        FROM sales_daily_quantity s
+        LEFT JOIN ebay_inventory i
             ON CONVERT(s.sku USING utf8mb4) COLLATE utf8mb4_0900_ai_ci = i.sku
             AND s.sales_date = i.date
         WHERE s.platform = 'Ebay'
-            AND s.sales_date BETWEEN '2020-01-01' AND '2025-05-31'
+            AND s.sales_date BETWEEN '2020-01-01' AND '{end_time}'
         GROUP BY s.sku, s.sales_date;
     """
     raw_df = pd.read_sql(query, engine)
 
 
     # 创建完整日期索引并填充
-    date_range = pd.date_range(start="2020-01-01", end="2025-05-31")
+    date_range = pd.date_range(start="2020-01-01", end=end_time)
     sku_list = raw_df['sku'].unique()
 
     full_index = pd.MultiIndex.from_product(
@@ -147,7 +155,7 @@ def get_valid_window(series):
 
     first_valid = series[non_zero].index.min()
     # 固定结束日期为2025-05-31
-    end_date = pd.Timestamp('2025-05-31')
+    end_date = pd.Timestamp(end_time)
     return series.loc[first_valid:end_date]
 
 def adjust_sales_with_inventory(sku_data, window=14, drop_threshold=0.5): #原数据，窗口大小，销量波动率阈值
@@ -572,6 +580,18 @@ def get_mysql_session():
     finally:
         session.close()
 
+def delete_table(table_name: str):
+    """
+    清空SKU销售目标表
+    :return:
+    """
+    try:
+        with get_mysql_session() as session:
+            # 查询所有item_id
+            stmt = text(f"""delete from dw.{table_name} where predict_date > STR_TO_DATE(end_time,'%Y-%m-%d')""")
+            result = session.execute(stmt)
+    except Exception as e:
+        print(f"Error: {e}")
 def write_predict_to_msyql(data_dic: dict, insert_talble: str):
     """
     插入数据到数据库销售目标表里面
@@ -584,7 +604,7 @@ def write_predict_to_msyql(data_dic: dict, insert_talble: str):
         for key, value in data_dic.items():
             isnert_data_dic[key] = value
         with get_mysql_session() as session:
-            stmt = text(f"""insert into {insert_talble}
+            stmt = text(f"""insert into dw.{insert_talble}
             (sku,platform,predict_date,predicted_qty,model_type)
             values (
             :_sku,:_platform,:_predict_date,:_predicted_qty,:_model_type
@@ -597,6 +617,7 @@ def write_predict_to_msyql(data_dic: dict, insert_talble: str):
         print(f"Error: {e}")
 def insert_to_mysql():
     try:
+        delete_table('dw_ebay_sales_forecast')
         predictions = main_pipeline()
         for index,row  in predictions.iterrows():
             write_dic = {'sku': row['sku'], 'platform': row['platform'], 'predict_date': row['date'].strftime('%Y-%m-%d'),
@@ -618,4 +639,6 @@ def insert_to_mysql():
 # 执行预测
 if __name__ == "__main__":
 
-    insert_to_mysql()
+    # insert_to_mysql()
+    end_time = get_last_month_end_date()
+    print(end_time,type(end_time))
