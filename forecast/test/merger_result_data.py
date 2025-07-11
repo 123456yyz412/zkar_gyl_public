@@ -12,7 +12,7 @@ def merge_data(type:str,forecast_date:list):
     :return:
     """
     # 设置最小下单数据
-    min_num = 15
+    min_num = 16
     for key,value in type_min_num.items():
         if type == key:
             min_num = value
@@ -213,6 +213,22 @@ def process_excel(input_file_path, output_file_path):
                 print(f"警告：行 {index} 的 f0{i + 1} 位置为 None，保留原值")
             else:
                 df.at[index, f'f0{i + 1}'] = result_list[i]
+
+    # 处理奇数
+    for index, row in df.iterrows():
+        # 获取原始预测值列表
+        forecast_values = [
+            int(row['f01']),
+            int(row['f02']),
+            int(row['f03']),
+            int(row['f04']),
+            int(row['f05']),
+            int(row['f06'])
+        ]
+
+        for i in range(6):
+            if forecast_values[i] % 2 != 0:
+                df.at[index, f'f0{i + 1}'] = df.at[index, f'f0{i + 1}']-1
 
     df.to_excel(output_file_path, index=False)
 
