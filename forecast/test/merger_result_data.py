@@ -21,6 +21,7 @@ def merge_data(type:str,forecast_date:list):
         return forecast_date
 
     if forecast_date[-1]<min_num:
+        # 分配次数
         x : int = int(sum_list(forecast_date)/min_num)
         if x>0:
             return distribute_value(min_num,x,get_non_zero_indices(forecast_date))
@@ -235,8 +236,8 @@ def process_excel(input_file_path, output_file_path):
 
 
 if __name__ == '__main__':
-    # input_file_path = r'D:\Desktop\yyz\2-forecast\2-结果文件\7-10forecast结果\ebay供应商展示预测值.xlsx'
-    # output_file_path = r'D:\Desktop\yyz\2-forecast\2-结果文件\7-10forecast结果\ebay供应商展示预测值结果.xlsx'
-    input_file_path = r'C:\Users\YYZ\Desktop\work\销售预测以及等级划分\7-10\供应商展示ebay预测值.xlsx'
-    output_file_path = r'C:\Users\YYZ\Desktop\work\销售预测以及等级划分\7-10\供应商展示ebay预测值结果.xlsx'
+    input_file_path = r'D:\Desktop\yyz\3-延期紧急订单\7-11\供应商展示ebay预测值.xlsx'
+    output_file_path = r'D:\Desktop\yyz\3-延期紧急订单\7-11\供应商展示ebay预测值结果.xlsx'
+    # input_file_path = r'C:\Users\YYZ\Desktop\work\销售预测以及等级划分\7-10\供应商展示ebay预测值.xlsx'
+    # output_file_path = r'C:\Users\YYZ\Desktop\work\销售预测以及等级划分\7-10\供应商展示ebay预测值结果.xlsx'
     process_excel(input_file_path, output_file_path)
