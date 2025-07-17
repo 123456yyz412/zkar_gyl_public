@@ -1,6 +1,5 @@
 import pandas as pd
-import random
-# 在以第一个月第二个月的销售进行延期的基础做的
+# 在以第一个月第二个月的销售 不进行延期的基础做的
 #初始配置
 type_min_num = {'Wheel Hub':12,'Brake Pads':30,'ABS Sensor':50}
 
@@ -23,12 +22,12 @@ def merge_data(type:str,forecast_date:list):
 
     if forecast_date[-1]<min_num:
         # 分配次数
-        x : int = int(sum_list(forecast_date)/min_num)
+        x : int = int(sum_list(forecast_date[2:])/min_num)
         if x>0:
             return distribute_value(min_num,x,get_non_zero_indices(forecast_date))
 
         else:
-            return distribute_value(sum(forecast_date),1,get_non_zero_indices(forecast_date))
+            return distribute_value(min_num,1,get_non_zero_indices(forecast_date))
 
     return forecast_date
 def count_non_zero(lst):
@@ -99,7 +98,13 @@ def get_non_zero_indices(lst):
         >>> get_non_zero_indices([1, 0, 2, 0, 3])
         [0, 2, 4]
     """
-    return [i for i, x in enumerate(lst) if x != 0]
+    # return [i for i, x in enumerate(lst) if x != 0]
+    result_list = []
+    for index,x in enumerate(lst):
+        if x != 0 and index not in [0,1]:
+            result_list.append(index)
+    return result_list
+
 
 # def distribute_value(value: int, num: int, index_list: list) -> list:
 #     """
@@ -237,8 +242,8 @@ def process_excel(input_file_path, output_file_path):
 
 
 if __name__ == '__main__':
-    input_file_path = r'D:\Desktop\yyz\3-延期紧急订单\7-11\供应商展示ebay预测值.xlsx'
-    output_file_path = r'D:\Desktop\yyz\3-延期紧急订单\7-11\供应商展示ebay预测值结果.xlsx'
+    input_file_path = r'D:\Desktop\yyz\3-延期紧急订单\7-17\供应商展示ebay预测值.xlsx'
+    output_file_path = r'D:\Desktop\yyz\3-延期紧急订单\7-17\供应商展示ebay预测值结果.xlsx'
     # input_file_path = r'C:\Users\YYZ\Desktop\work\销售预测以及等级划分\7-10\供应商展示ebay预测值.xlsx'
     # output_file_path = r'C:\Users\YYZ\Desktop\work\销售预测以及等级划分\7-10\供应商展示ebay预测值结果.xlsx'
 
