@@ -242,8 +242,8 @@ def process_excel(input_file_path, output_file_path):
 
 
 if __name__ == '__main__':
-    input_file_path = r'D:\Desktop\yyz\3-延期紧急订单\7-17\供应商展示ebay预测值.xlsx'
-    output_file_path = r'D:\Desktop\yyz\3-延期紧急订单\7-17\供应商展示ebay预测值结果.xlsx'
+    input_file_path = r'D:\Desktop\yyz\3-延期紧急订单\7-18\供应商展示ebay预测值.xlsx'
+    output_file_path = r'D:\Desktop\yyz\3-延期紧急订单\7-18\供应商展示ebay预测值结果.xlsx'
     # input_file_path = r'C:\Users\YYZ\Desktop\work\销售预测以及等级划分\7-10\供应商展示ebay预测值.xlsx'
     # output_file_path = r'C:\Users\YYZ\Desktop\work\销售预测以及等级划分\7-10\供应商展示ebay预测值结果.xlsx'
 
